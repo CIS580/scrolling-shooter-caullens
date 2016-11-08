@@ -6,6 +6,9 @@ const Vector = require('./vector');
 const Camera = require('./camera');
 const Player = require('./player');
 const BulletPool = require('./bullet_pool');
+const Misisle = require('./missile');
+const Tilemap = require('./Tilemap');
+const EntityManager = require('./entity-manager');
 
 
 /* Global variables */
@@ -17,10 +20,50 @@ var input = {
   left: false,
   right: false
 }
-var camera = new Camera(canvas);
 var bullets = new BulletPool(10);
 var missiles = [];
-var player = new Player(bullets, missiles);
+var em = new EntityManager();
+var player = new Player(em);
+var camera = new Camera(canvas);
+var hasPressed = false;
+var OneBG = require('../assets/groundOne.json');
+var Clouds = require('../assets/cloudsOne.json');
+var TwoBG = require('../assets/groundTwo.json');
+var ThreeBG = require('../assets/groundThree.json');
+
+var tilemaps = [];
+
+tilemaps.push(new Tilemap(OneBG, {
+  onload: function() {
+    checkLoaded();
+  }
+}));
+
+tilemaps.push(new Tilemap(TwoBG, {
+  onload: function() {
+    checkLoaded();
+  }
+}));
+
+tilemaps.push(new Tilemap(ThreeBG, {
+  onload: function() {
+    checkLoaded();
+  }
+}));
+
+tilemaps.push(new Tilemap(Clouds, {
+  onload: function() {
+    checkLoaded();
+  }
+}));
+
+var toLoad = 4;
+function checkLoaded() {
+  toLoad--;
+  if(toLoad == 0) {
+    masterLoop(performance.now());
+  }
+}
 
 /**
  * @function onkeydown
@@ -48,6 +91,20 @@ window.onkeydown = function(event) {
       input.right = true;
       event.preventDefault();
       break;
+    case "p":
+      game.pause(!game.paused);
+      event.preventDefault();
+      break;
+    case " ":
+      if(!hasPressed && player.weapon == "Gun") {
+        bullets.add(player.position, {x: 0, y: 5});
+        hasPressed = true;
+      }
+      event.preventDefault();
+      break;
+    case "e":
+      if(player.missileCount > 0)
+        missiles.add(player.position, {x: 0, y: 5});
   }
 }
 
@@ -77,6 +134,10 @@ window.onkeyup = function(event) {
       input.right = false;
       event.preventDefault();
       break;
+    case " ":
+      hasPressed = false;
+      event.preventDefault();
+      break;
   }
 }
 
@@ -89,7 +150,6 @@ var masterLoop = function(timestamp) {
   game.loop(timestamp);
   window.requestAnimationFrame(masterLoop);
 }
-masterLoop(performance.now());
 
 /**
  * @function update
@@ -134,11 +194,27 @@ function update(elapsedTime) {
   * @param {CanvasRenderingContext2D} ctx the context to render to
   */
 function render(elapsedTime, ctx) {
-  ctx.fillStyle = "black";
-  ctx.fillRect(0, 0, 1024, 786);
 
-  // TODO: Render background
+  ctx.fillStyle = 'black';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
 
+  if(player.level <= 3) {
+    ctx.save();
+    ctx.translate(0, -camera.y*0.3);
+    tilemaps[player.level - 1].render(ctx);
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(0, -camera.y);
+    tilemaps[3].render(ctx);
+    ctx.restore();
+  } else {
+    game.pause(true);
+    ctx.fillStyle = 'white';
+    ctx.font = '50px Segoe UI Light';
+    ctx.fillText("gg",ctx.width/2,ctx.height/2);
+  }
+  
   // Transform the coordinate system using
   // the camera position BEFORE rendering
   // objects in the world - that way they
@@ -171,7 +247,9 @@ function renderWorld(elapsedTime, ctx) {
     });
 
     // Render the player
-    player.render(elapsedTime, ctx);
+    if(player.level <= 3) {
+      player.render(elapsedTime, ctx);
+    }
 }
 
 /**

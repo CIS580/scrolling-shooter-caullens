@@ -55,8 +55,8 @@ BulletPool.prototype.add = function(position, velocity) {
 BulletPool.prototype.update = function(elapsedTime, callback) {
   for(var i = 0; i < this.end; i++){
     // Move the bullet
-    this.pool[4*i] += this.pool[4*i+2];
-    this.pool[4*i+1] += this.pool[4*i+3];
+    this.pool[4*i] -= this.pool[4*i+2];
+    this.pool[4*i+1] -= this.pool[4*i+3];
     // If a callback was supplied, call it
     if(callback && callback({
       x: this.pool[4*i],
