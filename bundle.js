@@ -471,6 +471,10 @@ function update(elapsedTime) {
 
   // check collisions
   CollisionManager.checkForCollision(entities);
+
+  if(player.lives < 1) {
+    game.pause(true);
+  }
 }
 
 /**
@@ -481,7 +485,6 @@ function update(elapsedTime) {
   * @param {CanvasRenderingContext2D} ctx the context to render to
   */
 function render(elapsedTime, ctx) {
-
   ctx.fillStyle = 'black';
   ctx.fillRect(0,0,canvas.width,canvas.height);
 
@@ -553,7 +556,25 @@ function renderWorld(elapsedTime, ctx) {
   * @param {CanvasRenderingContext2D} ctx
   */
 function renderGUI(elapsedTime, ctx) {
-  // TODO: Render the GUI
+  // Render the GUI
+  drawStroked("Lives: " + player.lives + "\t\t\t\t\t\t\t\t\t\t\t\tHealth: " + player.health + "\t\t\t\t\t\t\t\t\t\t\t\tLevel: " + player.level, 20, 1775, ctx);
+  if(player.lives < 1 || player.level > 3) {
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    drawStroked("gg", 750, 850, ctx);
+  }
+}
+
+function drawStroked(text, x, y, ctx) {
+    ctx.save();
+    ctx.scale(0.25,0.25);
+    ctx.font = "80px Sans-serif";
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 8;
+    ctx.strokeText(text, x, y);
+    ctx.fillStyle = 'white';
+    ctx.fillText(text, x, y);
+    ctx.restore();
 }
 
 },{"../assets/cloudsOne.json":1,"../assets/groundOne.json":2,"../assets/groundThree.json":3,"../assets/groundTwo.json":4,"./Tilemap":5,"./bullet_pool":7,"./camera":8,"./collision-manager":9,"./enemy":10,"./game":12,"./missile":13,"./player":15,"./vector":16}],7:[function(require,module,exports){
