@@ -78,6 +78,7 @@ Player.prototype.update = function(elapsedTime, input) {
   if(this.position.y < 200) {
     this.init();
     this.level++;
+    if(this.level < 4) this.state = "Summary";
   }
 }
 

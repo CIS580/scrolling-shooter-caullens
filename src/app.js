@@ -177,6 +177,14 @@ function update(elapsedTime) {
     return false;
   });
 
+  // Update enemy bullets
+  enemies.forEach(function(enemy) {
+    enemy.bullets.update(elapsedTime, function(bullet){
+      if(!camera.onScreen(bullet)) return true;
+      return false;
+    });
+  });
+
   // Update missiles
   var markedForRemoval = [];
   missiles.forEach(function(missile, i){
@@ -194,7 +202,7 @@ function update(elapsedTime) {
     console.log("Spawning enemy");
     var x = Math.floor(Math.random()*canvas.width);
     var y = player.position.y - 50 - Math.random()*50;
-    var newEnemy = new Enemy(player, {x: x, y: y});
+    var newEnemy = new Enemy(player, {x: x, y: y}, new BulletPool(10));
     enemies.push(newEnemy);
     entities.push(newEnemy);
   }
@@ -268,6 +276,11 @@ function renderWorld(elapsedTime, ctx) {
     // Render the bullets
     bullets.render(elapsedTime, ctx);
 
+    // Render enemy bullets
+    enemies.forEach(function(enemy) {
+      enemy.bullets.render(elapsedTime, ctx);
+    })
+
     // Render the missiles
     missiles.forEach(function(missile) {
       missile.render(elapsedTime, ctx);
@@ -299,6 +312,16 @@ function renderGUI(elapsedTime, ctx) {
     ctx.fillStyle = 'black';
     ctx.fillRect(0,0,canvas.width,canvas.height);
     drawStroked("gg", 750, 850, ctx);
+  }
+
+  if(player.state == "Summary") {
+    game.pause(true);
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    drawStroked("You completed the level.", 300, 850, ctx);
+    drawStroked("Nice job! Let's move on.", 320, 950, ctx);
+
+    setTimeout(function() { player.state = "Flying"; game.pause(false); }, 3000);
   }
 }
 

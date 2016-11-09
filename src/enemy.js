@@ -20,10 +20,10 @@ module.exports = exports = Enemy;
  * Creates a Enemy
  * @param {EntityManager} entityManager The entity manager
  */
-function Enemy(player, pos) {
+function Enemy(player, pos, bullets) {
   this.player = player;
   this.position = pos;
-  this.bullets = [];
+  this.bullets = bullets;
   this.angle = 0;
   var sign = 1;
   if(Math.random() < 0.5) sign = -1;
@@ -95,17 +95,6 @@ Enemy.prototype.render = function(elapsedTime, ctx) {
   ctx.translate(this.position.x, this.position.y);
   ctx.drawImage(this.image,0,0);
   ctx.restore();
-
-  // render bullets
-  this.bullets.forEach(function(bullet) {
-      ctx.save();
-      ctx.translate(bullet.position.x,bullet.position.y);
-      ctx.beginPath();
-      ctx.fillStyle = "black";
-      ctx.arc(0, 0, 2, 0, 2*Math.PI);
-      ctx.fill();
-      ctx.restore();
-  });
 }
 
 /**
@@ -120,7 +109,4 @@ Enemy.prototype.fireBullet = function(direction) {
 }
 
 Enemy.prototype.collidedWith = function(entity) {
-  if(entity instanceof Enemy) {
-      // who cares
-  }
 }

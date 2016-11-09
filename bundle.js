@@ -440,6 +440,14 @@ function update(elapsedTime) {
     return false;
   });
 
+  // Update enemy bullets
+  enemies.forEach(function(enemy) {
+    enemy.bullets.update(elapsedTime, function(bullet){
+      if(!camera.onScreen(bullet)) return true;
+      return false;
+    });
+  });
+
   // Update missiles
   var markedForRemoval = [];
   missiles.forEach(function(missile, i){
@@ -457,7 +465,7 @@ function update(elapsedTime) {
     console.log("Spawning enemy");
     var x = Math.floor(Math.random()*canvas.width);
     var y = player.position.y - 50 - Math.random()*50;
-    var newEnemy = new Enemy(player, {x: x, y: y});
+    var newEnemy = new Enemy(player, {x: x, y: y}, new BulletPool(10));
     enemies.push(newEnemy);
     entities.push(newEnemy);
   }
@@ -531,6 +539,11 @@ function renderWorld(elapsedTime, ctx) {
     // Render the bullets
     bullets.render(elapsedTime, ctx);
 
+    // Render enemy bullets
+    enemies.forEach(function(enemy) {
+      enemy.bullets.render(elapsedTime, ctx);
+    })
+
     // Render the missiles
     missiles.forEach(function(missile) {
       missile.render(elapsedTime, ctx);
@@ -562,6 +575,16 @@ function renderGUI(elapsedTime, ctx) {
     ctx.fillStyle = 'black';
     ctx.fillRect(0,0,canvas.width,canvas.height);
     drawStroked("gg", 750, 850, ctx);
+  }
+
+  if(player.state == "Summary") {
+    game.pause(true);
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    drawStroked("You completed the level.", 300, 850, ctx);
+    drawStroked("Nice job! Let's move on.", 320, 950, ctx);
+
+    setTimeout(function() { player.state = "Flying"; game.pause(false); }, 3000);
   }
 }
 
@@ -597,7 +620,7 @@ module.exports = exports = BulletPool;
  * @param {uint} size the maximum number of bullets to exits concurrently
  */
 function BulletPool(maxSize) {
-  this.pool = new Float32Array(5 * maxSize);
+  this.pool = new Float32Array(4 * maxSize);
   this.end = 0;
   this.max = maxSize;
 }
@@ -856,10 +879,10 @@ module.exports = exports = Enemy;
  * Creates a Enemy
  * @param {EntityManager} entityManager The entity manager
  */
-function Enemy(player, pos) {
+function Enemy(player, pos, bullets) {
   this.player = player;
   this.position = pos;
-  this.bullets = [];
+  this.bullets = bullets;
   this.angle = 0;
   var sign = 1;
   if(Math.random() < 0.5) sign = -1;
@@ -931,17 +954,6 @@ Enemy.prototype.render = function(elapsedTime, ctx) {
   ctx.translate(this.position.x, this.position.y);
   ctx.drawImage(this.image,0,0);
   ctx.restore();
-
-  // render bullets
-  this.bullets.forEach(function(bullet) {
-      ctx.save();
-      ctx.translate(bullet.position.x,bullet.position.y);
-      ctx.beginPath();
-      ctx.fillStyle = "black";
-      ctx.arc(0, 0, 2, 0, 2*Math.PI);
-      ctx.fill();
-      ctx.restore();
-  });
 }
 
 /**
@@ -956,9 +968,6 @@ Enemy.prototype.fireBullet = function(direction) {
 }
 
 Enemy.prototype.collidedWith = function(entity) {
-  if(entity instanceof Enemy) {
-      // who cares
-  }
 }
 },{"./explode-particles":11,"./missile_pool":14,"./vector":16}],11:[function(require,module,exports){
 "use strict";
@@ -1307,6 +1316,7 @@ Player.prototype.update = function(elapsedTime, input) {
   if(this.position.y < 200) {
     this.init();
     this.level++;
+    if(this.level < 4) this.state = "Summary";
   }
 }
 
