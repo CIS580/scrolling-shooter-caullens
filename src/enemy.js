@@ -6,7 +6,7 @@ const Missile = require('./missile_pool');
 const ExplodeParticles = require('./explode-particles');
 
 /* Constants */
-const ENEMY_SPEED = 5;
+const ENEMY_SPEED = 1;
 const BULLET_SPEED = 10;
 
 /**
@@ -20,12 +20,14 @@ module.exports = exports = Enemy;
  * Creates a Enemy
  * @param {EntityManager} entityManager The entity manager
  */
-function Enemy(entityManager, player, pos) {
-  this.em = entityManager;
+function Enemy(player, pos) {
   this.player = player;
   this.position = pos;
+  this.bullets = [];
   this.angle = 0;
-  this.velocity = {x: 0, y: 0};
+  var sign = 1;
+  if(Math.random() < 0.5) sign = -1;
+  this.velocity = {x: ENEMY_SPEED, y: ENEMY_SPEED};
   this.radius = 12;
   this.init();
 }
@@ -43,19 +45,19 @@ function determineEnemy(self) {
     self.image = new Image();
     switch(enemyNum) {
         case 1:
-            self.src = encodeURI();
+            self.image.src = encodeURI('assets/tempEnemy.png');
             break;
         case 2:
-            self.src = encodeURI();
+            self.image.src = encodeURI('assets/tempEnemy1.png');
             break;
         case 3:
-            self.src = encodeURI();
+            self.image.src = encodeURI('assets/tempEnemy2.png');
             break;
         case 4:
-            self.src = encodeURI();
+            self.image.src = encodeURI('assets/tempEnemy3.png');
             break;
         case 5:
-            self.src = encodeURI();
+            self.image.src = encodeURI('assets/tempEnemy4.png');
             break;
     }
 }
@@ -67,36 +69,19 @@ function determineEnemy(self) {
  * @param {Input} input object defining input, must have
  * boolean properties: up, left, right, down
  */
-Enemy.prototype.update = function(elapsedTime, input) {
-
-  // set the velocity
-  this.velocity.x = 0;
-  if(input.left) this.velocity.x -= Enemy_SPEED;
-  if(input.right) this.velocity.x += Enemy_SPEED;
-  this.velocity.y = 0;
-  if(input.up) this.velocity.y -= Enemy_SPEED / 2;
-  if(input.down) this.velocity.y += Enemy_SPEED / 2;
-
-  // determine Enemy angle
-  this.angle = 0;
-  if(this.velocity.x < 0) this.angle = -1;
-  if(this.velocity.x > 0) this.angle = 1;
-
-  // move the Enemy
-  this.position.x += this.velocity.x;
-  this.position.y += this.velocity.y;
-  this.position.y--;
-
-  // don't let the Enemy move off-screen
-  if(this.position.x < 0) this.position.x = 0;
-  if(this.position.x > 384) this.position.x = 384;
-  if(this.position.y > 3584) this.position.y = 3584;
-
-  //see if Enemy has beaten level
-  if(this.position.y < 200) {
-    this.position = {x: 200, y: 3454};
-    this.level++;
+Enemy.prototype.update = function(elapsedTime) {
+  var dx = this.player.position.x - this.position.x;
+  var dy = this.player.position.y - this.position.y;
+  var angle = Math.atan2(dy,dx);
+  if(this.player.position.x - 12 > this.position.x) {
+      this.position.x += this.velocity.x*Math.sin(angle);
   }
+  if(this.player.position.x - 12< this.position.x) {
+      this.position.x -= this.velocity.x*Math.sin(angle);
+  }
+  this.position.y -= this.velocity.y;
+
+  if(elapsedTime % 1000 == 0) this.fireBullet({x: 0, y: 1});
 }
 
 /**
@@ -105,12 +90,22 @@ Enemy.prototype.update = function(elapsedTime, input) {
  * @param {DOMHighResTimeStamp} elapsedTime
  * @param {CanvasRenderingContext2D} ctx
  */
-Enemy.prototype.render = function(elapasedTime, ctx) {
-  var offset = this.angle * 23;
+Enemy.prototype.render = function(elapsedTime, ctx) {
   ctx.save();
   ctx.translate(this.position.x, this.position.y);
-  ctx.drawImage(this.img, 48+offset, 57, 23, 27, -12.5, -12, 23, 27);
+  ctx.drawImage(this.image,0,0);
   ctx.restore();
+
+  // render bullets
+  this.bullets.forEach(function(bullet) {
+      ctx.save();
+      ctx.translate(bullet.position.x,bullet.position.y);
+      ctx.beginPath();
+      ctx.fillStyle = "black";
+      ctx.arc(0, 0, 2, 0, 2*Math.PI);
+      ctx.fill();
+      ctx.restore();
+  });
 }
 
 /**
@@ -122,4 +117,10 @@ Enemy.prototype.fireBullet = function(direction) {
   var position = Vector.add(this.position, {x:30, y:30});
   var velocity = Vector.scale(Vector.normalize(direction), BULLET_SPEED);
   this.bullets.add(position, velocity);
+}
+
+Enemy.prototype.collidedWith = function(entity) {
+  if(entity instanceof Enemy) {
+      // who cares
+  }
 }

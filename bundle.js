@@ -268,10 +268,11 @@ const Game = require('./game');
 const Vector = require('./vector');
 const Camera = require('./camera');
 const Player = require('./player');
+const Enemy = require('./enemy');
 const BulletPool = require('./bullet_pool');
 const Misisle = require('./missile');
 const Tilemap = require('./Tilemap');
-const EntityManager = require('./entity-manager');
+const CollisionManager = require('./collision-manager');
 
 
 /* Global variables */
@@ -285,14 +286,17 @@ var input = {
 }
 var bullets = new BulletPool(10);
 var missiles = [];
-var em = new EntityManager();
-var player = new Player(em);
+var player = new Player(bullets, missiles);
 var camera = new Camera(canvas);
+var enemies = [];
+var entities = [];
 var hasPressed = false;
 var OneBG = require('../assets/groundOne.json');
 var Clouds = require('../assets/cloudsOne.json');
 var TwoBG = require('../assets/groundTwo.json');
 var ThreeBG = require('../assets/groundThree.json');
+
+entities.push(player);
 
 var tilemaps = [];
 
@@ -447,6 +451,26 @@ function update(elapsedTime) {
   markedForRemoval.forEach(function(index){
     missiles.splice(index, 1);
   });
+
+  // spawn new enemy
+  if(Math.floor(Math.random()*100) == 5 && enemies.length < 10) {
+    console.log("Spawning enemy");
+    var x = Math.floor(Math.random()*canvas.width);
+    var y = player.position.y - 50 - Math.random()*50;
+    var newEnemy = new Enemy(player, {x: x, y: y});
+    enemies.push(newEnemy);
+    entities.push(newEnemy);
+  }
+
+  // update enemies
+  if(enemies.length > 0) {
+    enemies.forEach(function(enemy) {
+      enemy.update(elapsedTime);
+    });
+  }
+
+  // check collisions
+  CollisionManager.checkForCollision(entities);
 }
 
 /**
@@ -513,6 +537,13 @@ function renderWorld(elapsedTime, ctx) {
     if(player.level <= 3) {
       player.render(elapsedTime, ctx);
     }
+
+    // Render the enemy
+    if(player.level <= 3) {
+      enemies.forEach(function(enemy) {
+        enemy.render(elapsedTime, ctx);
+      });
+    }
 }
 
 /**
@@ -525,7 +556,7 @@ function renderGUI(elapsedTime, ctx) {
   // TODO: Render the GUI
 }
 
-},{"../assets/cloudsOne.json":1,"../assets/groundOne.json":2,"../assets/groundThree.json":3,"../assets/groundTwo.json":4,"./Tilemap":5,"./bullet_pool":7,"./camera":8,"./entity-manager":9,"./game":11,"./missile":12,"./player":14,"./vector":15}],7:[function(require,module,exports){
+},{"../assets/cloudsOne.json":1,"../assets/groundOne.json":2,"../assets/groundThree.json":3,"../assets/groundTwo.json":4,"./Tilemap":5,"./bullet_pool":7,"./camera":8,"./collision-manager":9,"./enemy":10,"./game":12,"./missile":13,"./player":15,"./vector":16}],7:[function(require,module,exports){
 "use strict";
 
 /**
@@ -545,7 +576,7 @@ module.exports = exports = BulletPool;
  * @param {uint} size the maximum number of bullets to exits concurrently
  */
 function BulletPool(maxSize) {
-  this.pool = new Float32Array(4 * maxSize);
+  this.pool = new Float32Array(5 * maxSize);
   this.end = 0;
   this.max = maxSize;
 }
@@ -706,79 +737,45 @@ Camera.prototype.toWorldCoordinates = function(screenCoordinates) {
   return Vector.add(screenCoordinates, this);
 }
 
-},{"./vector":15}],9:[function(require,module,exports){
+},{"./vector":16}],9:[function(require,module,exports){
 "use strict";
 
 /**
- * @module exports the Entity Manager class
+ * @module exports the Collision Manager class
  */
-module.exports = exports = EntityManager;
-
-/**
- * @constructor EntityManager
- * Creates a new EntityManager object
- */
-function EntityManager() {
-  this.entities = [];
+module.exports = exports = {
+    checkForCollision: checkForCollision
 }
 
-EntityManager.prototype.addEntity = function(entity) {
-  this.entities.push(entity);
-}
-
-EntityManager.prototype.destroyEntity = function(entity){
-  var idx = this.entities.indexOf(entity);
-  this.entities.splice(idx, 1);
-}
-
-EntityManager.prototype.reset = function() {
-  this.entities = [];
-}
-
-EntityManager.prototype.update = function(elapsedTime) {
-  var toBeDestroyed = [];
-  var self = this;
-  this.entities.forEach(function(entity){
-    if(entity.retain()){
-      entity.update(elapsedTime);
-    }
-    else{
-      toBeDestroyed.push(entity);
-    }
-  });
-
-  toBeDestroyed.forEach(function(entity){
-    self.destroyEntity(entity);
-  });
-
-  this.entities.sort(function(a,b){return a.position.x - b.position.x});
-
-  // The active list will hold all entities
+function checkForCollision(entities) {
+  // The active list will hold all balls
   // we are currently considering for collisions
   var active = [];
 
   // The potentially colliding list will hold
-  // all pairs of entities that overlap in the x-axis,
+  // all pairs of balls that overlap in the x-axis,
   // and therefore potentially collide
   var potentiallyColliding = [];
 
-  // For each entity in the axis list, we consider it
+  // For each ball in the axis list, we consider it
   // in order
-  this.entities.forEach(function(entity, aindex){
-    // remove entities from the active list that are
-    // too far away from our current entity to collide
+  entities.forEach(function(entity, aindex){
+    // remove balls from the active list that are
+    // too far away from our current ball to collide
     // The Array.prototype.filter() method will return
     // an array containing only elements for which the
-    // provided function's return value was true
-    active = active.filter(function(entityTwo){
-      return entity.position.x - entityTwo.position.x  < entity.radius + entityTwo.radius;
+    // provided function's return value was true -
+    // in this case, all balls that are closer than 30
+    // units to our current ball on the x-axis
+    active = active.filter(function(oentity){
+      return entity.position.x - oentity.position.x  < entity.radius + oentity.radius;
     });
-    // Since only enitites within colliding distance of
-    // our current entity are left in the active list,
-    // we pair them with the current entity and add
+    // Since only balls within colliding distance of
+    // our current ball are left in the active list,
+    // we pair them with the current ball and add
     // them to the potentiallyColliding array.
-    active.forEach(function(entityTwo){
-      potentiallyColliding.push({a: entityTwo, b: entity});
+    active.forEach(function(oentity, bindex){
+      potentiallyColliding.push({a: oentity, b: entity});
     });
     // Finally, we add our current ball to the active
     // array to consider it in the next pass down the
@@ -792,15 +789,15 @@ EntityManager.prototype.update = function(elapsedTime) {
   // We'll store those in our collisions array.
   var collisions = [];
   potentiallyColliding.forEach(function(pair){
-    // Calculate the distance between entities; we'll keep
+    // Calculate the distance between balls; we'll keep
     // this as the squared distance, as we just need to
     // compare it to a distance equal to the radius of
-    // both entities summed.  Squaring this second value
+    // both balls summed.  Squaring this second value
     // is less computationally expensive than taking
     // the square root to get the actual distance.
     // In fact, we can cheat a bit more and use a constant
     // for the sum of radii, as we know the radius of our
-    // entities won't change.
+    // balls won't change.
     var distSquared =
       Math.pow(pair.a.position.x - pair.b.position.x, 2) +
       Math.pow(pair.a.position.y - pair.b.position.y, 2);
@@ -811,17 +808,138 @@ EntityManager.prototype.update = function(elapsedTime) {
   });
 
   collisions.forEach(function(pair){
-    pair.a.collided(pair.b);
-    pair.b.collided(pair.a);
-  })
-}
-
-EntityManager.prototype.render = function(elapsedTime, ctx) {
-  this.entities.forEach(function(entity){
-    entity.render(elapsedTime, ctx);
+    pair.a.collidedWith(pair.b);
+    pair.b.collidedWith(pair.a);
   });
 }
 },{}],10:[function(require,module,exports){
+"use strict";
+
+/* Classes and Libraries */
+const Vector = require('./vector');
+const Missile = require('./missile_pool');
+const ExplodeParticles = require('./explode-particles');
+
+/* Constants */
+const ENEMY_SPEED = 1;
+const BULLET_SPEED = 10;
+
+/**
+ * @module Enemy
+ * A class representing a Enemy's ship
+ */
+module.exports = exports = Enemy;
+
+/**
+ * @constructor Enemy
+ * Creates a Enemy
+ * @param {EntityManager} entityManager The entity manager
+ */
+function Enemy(player, pos) {
+  this.player = player;
+  this.position = pos;
+  this.bullets = [];
+  this.angle = 0;
+  var sign = 1;
+  if(Math.random() < 0.5) sign = -1;
+  this.velocity = {x: ENEMY_SPEED, y: ENEMY_SPEED};
+  this.radius = 12;
+  this.init();
+}
+
+Enemy.prototype.init = function() {
+  determineEnemy(this);
+  this.health = 10;
+  this.maxHealth = 10;
+  this.particles = new ExplodeParticles(700);
+}
+
+function determineEnemy(self) {
+    var enemyNum = Math.floor(Math.random()*5);
+    self.num = enemyNum;
+    self.image = new Image();
+    switch(enemyNum) {
+        case 1:
+            self.image.src = encodeURI('assets/tempEnemy.png');
+            break;
+        case 2:
+            self.image.src = encodeURI('assets/tempEnemy1.png');
+            break;
+        case 3:
+            self.image.src = encodeURI('assets/tempEnemy2.png');
+            break;
+        case 4:
+            self.image.src = encodeURI('assets/tempEnemy3.png');
+            break;
+        case 5:
+            self.image.src = encodeURI('assets/tempEnemy4.png');
+            break;
+    }
+}
+
+/**
+ * @function update
+ * Updates the Enemy based on the supplied input
+ * @param {DOMHighResTimeStamp} elapedTime
+ * @param {Input} input object defining input, must have
+ * boolean properties: up, left, right, down
+ */
+Enemy.prototype.update = function(elapsedTime) {
+  var dx = this.player.position.x - this.position.x;
+  var dy = this.player.position.y - this.position.y;
+  var angle = Math.atan2(dy,dx);
+  if(this.player.position.x - 12 > this.position.x) {
+      this.position.x += this.velocity.x*Math.sin(angle);
+  }
+  if(this.player.position.x - 12< this.position.x) {
+      this.position.x -= this.velocity.x*Math.sin(angle);
+  }
+  this.position.y -= this.velocity.y;
+
+  if(elapsedTime % 1000 == 0) this.fireBullet({x: 0, y: 1});
+}
+
+/**
+ * @function render
+ * Renders the Enemy helicopter in world coordinates
+ * @param {DOMHighResTimeStamp} elapsedTime
+ * @param {CanvasRenderingContext2D} ctx
+ */
+Enemy.prototype.render = function(elapsedTime, ctx) {
+  ctx.save();
+  ctx.translate(this.position.x, this.position.y);
+  ctx.drawImage(this.image,0,0);
+  ctx.restore();
+
+  // render bullets
+  this.bullets.forEach(function(bullet) {
+      ctx.save();
+      ctx.translate(bullet.position.x,bullet.position.y);
+      ctx.beginPath();
+      ctx.fillStyle = "black";
+      ctx.arc(0, 0, 2, 0, 2*Math.PI);
+      ctx.fill();
+      ctx.restore();
+  });
+}
+
+/**
+ * @function fireBullet
+ * Fires a bullet
+ * @param {Vector} direction
+ */
+Enemy.prototype.fireBullet = function(direction) {
+  var position = Vector.add(this.position, {x:30, y:30});
+  var velocity = Vector.scale(Vector.normalize(direction), BULLET_SPEED);
+  this.bullets.add(position, velocity);
+}
+
+Enemy.prototype.collidedWith = function(entity) {
+  if(entity instanceof Enemy) {
+      // who cares
+  }
+}
+},{"./explode-particles":11,"./missile_pool":14,"./vector":16}],11:[function(require,module,exports){
 "use strict";
 
 /**
@@ -927,7 +1045,7 @@ ExplodeParticles.prototype.render = function(elapsedTime, ctx) {
   }
 }
 
-},{}],11:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 "use strict";
 
 /**
@@ -985,7 +1103,7 @@ Game.prototype.loop = function(newTime) {
   this.frontCtx.drawImage(this.backBuffer, 0, 0);
 }
 
-},{}],12:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 "use strict";
 
 /**
@@ -1085,9 +1203,9 @@ MissilePool.prototype.render = function(elapsedTime, ctx) {
   ctx.fill();
   ctx.restore();
 }
-},{}],13:[function(require,module,exports){
-arguments[4][12][0].apply(exports,arguments)
-},{"dup":12}],14:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
+arguments[4][13][0].apply(exports,arguments)
+},{"dup":13}],15:[function(require,module,exports){
 "use strict";
 
 /* Classes and Libraries */
@@ -1108,21 +1226,23 @@ module.exports = exports = Player;
 /**
  * @constructor Player
  * Creates a player
- * @param {EntityManager} entityManager The entity manager
  */
-function Player(entityManager) {
-  this.em = entityManager;
+function Player(bullets, missiles) {
+  this.bullets = bullets;
+  this.missiles = missiles;
   this.level = 1;
   this.angle = 0;
+  this.lives = 3;
   this.velocity = {x: 0, y: 0};
-  this.radius = 12;
   this.img = new Image();
   this.img.src = 'assets/tyrian.shp.007D3C.png';
+  this.radius = 12;
   this.init();
 }
 
 Player.prototype.init = function() {
-  this.position = {x: 200, y: 3454};
+  this.state = "Flying";
+  this.position = {x: 200, y: 3254};
   this.health = 100;
   this.maxHealth = 100;
   this.score = 0;
@@ -1162,7 +1282,7 @@ Player.prototype.update = function(elapsedTime, input) {
   if(this.position.x > 384) this.position.x = 384;
   if(this.position.y > 3584) this.position.y = 3584;
 
-  //see if player has beaten level
+  // see if player has beaten level
   if(this.position.y < 200) {
     this.init();
     this.level++;
@@ -1176,11 +1296,13 @@ Player.prototype.update = function(elapsedTime, input) {
  * @param {CanvasRenderingContext2D} ctx
  */
 Player.prototype.render = function(elapasedTime, ctx) {
-  var offset = this.angle * 23;
-  ctx.save();
-  ctx.translate(this.position.x, this.position.y);
-  ctx.drawImage(this.img, 48+offset, 57, 23, 27, -12.5, -12, 23, 27);
-  ctx.restore();
+  if(this.state == "Flying") {
+    var offset = this.angle * 23;
+    ctx.save();
+    ctx.translate(this.position.x, this.position.y);
+    ctx.drawImage(this.img, 48+offset, 57, 23, 27, -12.5, -12, 23, 27);
+    ctx.restore();
+  }
 }
 
 /**
@@ -1208,7 +1330,18 @@ Player.prototype.fireMissile = function() {
   }
 }
 
-},{"./explode-particles":10,"./missile_pool":13,"./vector":15}],15:[function(require,module,exports){
+Player.prototype.collidedWith = function(entity) {
+  die(this);
+}
+
+function die(self) {
+  self.state = "Dead";
+  self.particles.emit(self.position.x,self.position.y);
+  self.lives--;
+  self.init();
+}
+
+},{"./explode-particles":11,"./missile_pool":14,"./vector":16}],16:[function(require,module,exports){
 "use strict";
 
 /**

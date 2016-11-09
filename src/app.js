@@ -5,10 +5,11 @@ const Game = require('./game');
 const Vector = require('./vector');
 const Camera = require('./camera');
 const Player = require('./player');
+const Enemy = require('./enemy');
 const BulletPool = require('./bullet_pool');
 const Misisle = require('./missile');
 const Tilemap = require('./Tilemap');
-const EntityManager = require('./entity-manager');
+const CollisionManager = require('./collision-manager');
 
 
 /* Global variables */
@@ -22,14 +23,17 @@ var input = {
 }
 var bullets = new BulletPool(10);
 var missiles = [];
-var em = new EntityManager();
-var player = new Player(em);
+var player = new Player(bullets, missiles);
 var camera = new Camera(canvas);
+var enemies = [];
+var entities = [];
 var hasPressed = false;
 var OneBG = require('../assets/groundOne.json');
 var Clouds = require('../assets/cloudsOne.json');
 var TwoBG = require('../assets/groundTwo.json');
 var ThreeBG = require('../assets/groundThree.json');
+
+entities.push(player);
 
 var tilemaps = [];
 
@@ -184,6 +188,26 @@ function update(elapsedTime) {
   markedForRemoval.forEach(function(index){
     missiles.splice(index, 1);
   });
+
+  // spawn new enemy
+  if(Math.floor(Math.random()*100) == 5 && enemies.length < 10) {
+    console.log("Spawning enemy");
+    var x = Math.floor(Math.random()*canvas.width);
+    var y = player.position.y - 50 - Math.random()*50;
+    var newEnemy = new Enemy(player, {x: x, y: y});
+    enemies.push(newEnemy);
+    entities.push(newEnemy);
+  }
+
+  // update enemies
+  if(enemies.length > 0) {
+    enemies.forEach(function(enemy) {
+      enemy.update(elapsedTime);
+    });
+  }
+
+  // check collisions
+  CollisionManager.checkForCollision(entities);
 }
 
 /**
@@ -249,6 +273,13 @@ function renderWorld(elapsedTime, ctx) {
     // Render the player
     if(player.level <= 3) {
       player.render(elapsedTime, ctx);
+    }
+
+    // Render the enemy
+    if(player.level <= 3) {
+      enemies.forEach(function(enemy) {
+        enemy.render(elapsedTime, ctx);
+      });
     }
 }
 

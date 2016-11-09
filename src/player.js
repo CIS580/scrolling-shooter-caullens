@@ -18,21 +18,23 @@ module.exports = exports = Player;
 /**
  * @constructor Player
  * Creates a player
- * @param {EntityManager} entityManager The entity manager
  */
-function Player(entityManager) {
-  this.em = entityManager;
+function Player(bullets, missiles) {
+  this.bullets = bullets;
+  this.missiles = missiles;
   this.level = 1;
   this.angle = 0;
+  this.lives = 3;
   this.velocity = {x: 0, y: 0};
-  this.radius = 12;
   this.img = new Image();
   this.img.src = 'assets/tyrian.shp.007D3C.png';
+  this.radius = 12;
   this.init();
 }
 
 Player.prototype.init = function() {
-  this.position = {x: 200, y: 3454};
+  this.state = "Flying";
+  this.position = {x: 200, y: 3254};
   this.health = 100;
   this.maxHealth = 100;
   this.score = 0;
@@ -72,7 +74,7 @@ Player.prototype.update = function(elapsedTime, input) {
   if(this.position.x > 384) this.position.x = 384;
   if(this.position.y > 3584) this.position.y = 3584;
 
-  //see if player has beaten level
+  // see if player has beaten level
   if(this.position.y < 200) {
     this.init();
     this.level++;
@@ -86,11 +88,13 @@ Player.prototype.update = function(elapsedTime, input) {
  * @param {CanvasRenderingContext2D} ctx
  */
 Player.prototype.render = function(elapasedTime, ctx) {
-  var offset = this.angle * 23;
-  ctx.save();
-  ctx.translate(this.position.x, this.position.y);
-  ctx.drawImage(this.img, 48+offset, 57, 23, 27, -12.5, -12, 23, 27);
-  ctx.restore();
+  if(this.state == "Flying") {
+    var offset = this.angle * 23;
+    ctx.save();
+    ctx.translate(this.position.x, this.position.y);
+    ctx.drawImage(this.img, 48+offset, 57, 23, 27, -12.5, -12, 23, 27);
+    ctx.restore();
+  }
 }
 
 /**
@@ -116,4 +120,15 @@ Player.prototype.fireMissile = function() {
     this.missiles.push(missile);
     this.missileCount--;
   }
+}
+
+Player.prototype.collidedWith = function(entity) {
+  die(this);
+}
+
+function die(self) {
+  self.state = "Dead";
+  self.particles.emit(self.position.x,self.position.y);
+  self.lives--;
+  self.init();
 }
