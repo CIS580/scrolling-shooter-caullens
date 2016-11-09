@@ -18,7 +18,6 @@ module.exports = exports = Enemy;
 /**
  * @constructor Enemy
  * Creates a Enemy
- * @param {EntityManager} entityManager The entity manager
  */
 function Enemy(player, pos, bullets) {
   this.player = player;

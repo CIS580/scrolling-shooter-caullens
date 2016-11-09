@@ -6,6 +6,7 @@ const Vector = require('./vector');
 const Camera = require('./camera');
 const Player = require('./player');
 const Enemy = require('./enemy');
+const PowerUp = require('./power-up');
 const BulletPool = require('./bullet_pool');
 const Misisle = require('./missile');
 const Tilemap = require('./Tilemap');
@@ -26,8 +27,10 @@ var missiles = [];
 var player = new Player(bullets, missiles);
 var camera = new Camera(canvas);
 var enemies = [];
+var powerups = [];
 var entities = [];
 var hasPressed = false;
+var powerupcooldown = 0;
 var OneBG = require('../assets/groundOne.json');
 var Clouds = require('../assets/cloudsOne.json');
 var TwoBG = require('../assets/groundTwo.json');
@@ -192,19 +195,30 @@ function update(elapsedTime) {
     if(Math.abs(missile.position.x - camera.x) > camera.width * 2)
       markedForRemoval.unshift(i);
   });
+
   // Remove missiles that have gone off-screen
   markedForRemoval.forEach(function(index){
     missiles.splice(index, 1);
   });
 
-  // spawn new enemy
+  // Spawn new enemy
   if(Math.floor(Math.random()*100) == 5 && enemies.length < 10) {
-    console.log("Spawning enemy");
     var x = Math.floor(Math.random()*canvas.width);
     var y = player.position.y - 50 - Math.random()*50;
     var newEnemy = new Enemy(player, {x: x, y: y}, new BulletPool(10));
     enemies.push(newEnemy);
     entities.push(newEnemy);
+  }
+
+  powerupcooldown++;
+  // Spawn new PowerUp
+  if(powerupcooldown > 700) {
+    powerupcooldown = 0;
+    var x = Math.floor(Math.random()*canvas.width);
+    var y = player.position.y - 50 - Math.random()*50;
+    var newpowerup = new PowerUp({x: x, y: y});
+    powerups.push(newpowerup);
+    entities.push(newpowerup);
   }
 
   // update enemies
@@ -279,7 +293,12 @@ function renderWorld(elapsedTime, ctx) {
     // Render enemy bullets
     enemies.forEach(function(enemy) {
       enemy.bullets.render(elapsedTime, ctx);
-    })
+    });
+
+    // Render power-ups
+    powerups.forEach(function(powerup) {
+      powerup.render(elapsedTime, ctx);
+    });
 
     // Render the missiles
     missiles.forEach(function(missile) {
